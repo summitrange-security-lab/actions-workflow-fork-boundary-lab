@@ -1,0 +1,20 @@
+name: Dormant Script Boundary Canary
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    env:
+      CANARY_SECRET: ${{ secrets.FORK_BOUNDARY_CANARY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run repository-owned canary script
+        run: bash boundary-runner.sh
