@@ -1,0 +1,13 @@
+name: git-data-delete-surface-repro
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo OWNER_STAGED_DELETE_SURFACE_CONTROL
