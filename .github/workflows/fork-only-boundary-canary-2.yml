@@ -1,0 +1,16 @@
+name: Fork Only Boundary Canary 2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "FORK_ONLY_WORKFLOW_CANARY_2"
