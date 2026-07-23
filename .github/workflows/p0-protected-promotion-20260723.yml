@@ -1,0 +1,57 @@
+name: P0 Protected Dormant Workflow Promotion
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  protected-promotion:
+    name: Protected promoted workflow canary
+    runs-on: ubuntu-latest
+    environment: p0-promotion-canary
+    steps:
+      - name: Emit sanitized promotion evidence
+        env:
+          PROMOTION_CANARY: ${{ secrets.P0_PROMOTION_CANARY }}
+        shell: python
+        run: |
+          import base64
+          import hashlib
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+
+          def decode_segment(value):
+              value += "=" * (-len(value) % 4)
+              return json.loads(base64.urlsafe_b64decode(value))
+
+          audience = "p0-protected-workflow-promotion"
+          request_url = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
+          separator = "&" if "?" in request_url else "?"
+          request_url += separator + urllib.parse.urlencode({"audience": audience})
+          request = urllib.request.Request(
+              request_url,
+              headers={"Authorization": "Bearer " + os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]},
+          )
+          with urllib.request.urlopen(request) as response:
+              token = json.load(response)["value"]
+          claims = decode_segment(token.split(".")[1])
+          selected_names = [
+              "aud", "repository", "repository_id", "actor", "actor_id",
+              "environment", "event_name", "ref", "sha", "run_id",
+              "run_attempt", "workflow_ref", "workflow_sha",
+              "job_workflow_ref", "job_workflow_sha",
+          ]
+          selected = {name: claims.get(name) for name in selected_names}
+          secret = os.environ.get("PROMOTION_CANARY", "")
+
+          print("PROMOTION_CODE_CANARY=dormant-protected-v1")
+          print("PROMOTION_SECRET_PRESENT=" + str(bool(secret)).lower())
+          print("PROMOTION_SECRET_SHA256=" + hashlib.sha256(secret.encode()).hexdigest())
+          print("PROMOTION_OIDC_SELECTED=" + json.dumps(selected, sort_keys=True, separators=(",", ":")))
