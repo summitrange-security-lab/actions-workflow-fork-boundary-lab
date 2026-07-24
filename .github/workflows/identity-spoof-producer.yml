@@ -1,0 +1,25 @@
+name: Trusted Producer Identity 20260723
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  produce-spoof-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit fork spoof identity marker
+        shell: bash
+        run: |
+          echo "IDENTITY_PRODUCER_KIND=fork-different-path-same-name"
+          echo "IDENTITY_PRODUCER_PATH=.github/workflows/identity-spoof-producer.yml"
+          echo "IDENTITY_PRODUCER_REPOSITORY=${GITHUB_REPOSITORY}"
+          echo "IDENTITY_PRODUCER_EVENT=${GITHUB_EVENT_NAME}"
+          echo "IDENTITY_PRODUCER_REF=${GITHUB_REF}"
+          echo "IDENTITY_PRODUCER_SHA=${GITHUB_SHA}"
+          echo "IDENTITY_PRODUCER_RUN_ID=${GITHUB_RUN_ID}"
+          echo "IDENTITY_PRODUCER_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
