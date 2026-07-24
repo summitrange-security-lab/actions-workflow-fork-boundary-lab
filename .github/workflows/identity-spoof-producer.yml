@@ -1,4 +1,4 @@
-name: Different Producer Identity Control 20260723
+name: Trusted Producer Identity 20260723
 
 on:
   pull_request:
@@ -24,3 +24,15 @@ jobs:
           echo "IDENTITY_PRODUCER_RUN_ID=${GITHUB_RUN_ID}"
           echo "IDENTITY_PRODUCER_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
           echo "IDENTITY_PRODUCER_BRANCH_FILTER_PROBE=20260723-v1"
+
+      - name: Create fork-controlled build artifact
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/identity-artifact"
+          printf '%s\n' 'fork-spoof-controlled-payload' > "${RUNNER_TEMP}/identity-artifact/source.txt"
+
+      - name: Upload fork-controlled build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: trusted-build-output-20260723
+          path: ${{ runner.temp }}/identity-artifact/source.txt
