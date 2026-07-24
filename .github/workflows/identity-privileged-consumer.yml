@@ -1,0 +1,65 @@
+name: Privileged Consumer Identity Binding 20260723
+
+on:
+  workflow_run:
+    workflows:
+      - Trusted Producer Identity 20260723
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: write
+  id-token: write
+
+jobs:
+  inspect-trigger-identity:
+    runs-on: ubuntu-latest
+    env:
+      BOUNDARY_SECRET: ${{ secrets.WORKFLOW_RUN_IDENTITY_CANARY }}
+      SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+      SOURCE_WORKFLOW_ID: ${{ github.event.workflow_run.workflow_id }}
+      SOURCE_NAME: ${{ github.event.workflow_run.name }}
+      SOURCE_PATH: ${{ github.event.workflow_run.path }}
+      SOURCE_EVENT: ${{ github.event.workflow_run.event }}
+      SOURCE_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+      SOURCE_HEAD_REPOSITORY: ${{ github.event.workflow_run.head_repository.full_name }}
+      SOURCE_HEAD_REPOSITORY_ID: ${{ github.event.workflow_run.head_repository.id }}
+      SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+    steps:
+      - name: Record source identity and privileged context
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "IDENTITY_CONSUMER_SOURCE_RUN_ID=${SOURCE_RUN_ID}"
+          echo "IDENTITY_CONSUMER_SOURCE_WORKFLOW_ID=${SOURCE_WORKFLOW_ID}"
+          echo "IDENTITY_CONSUMER_SOURCE_NAME=${SOURCE_NAME}"
+          echo "IDENTITY_CONSUMER_SOURCE_PATH=${SOURCE_PATH}"
+          echo "IDENTITY_CONSUMER_SOURCE_EVENT=${SOURCE_EVENT}"
+          echo "IDENTITY_CONSUMER_SOURCE_HEAD_SHA=${SOURCE_HEAD_SHA}"
+          echo "IDENTITY_CONSUMER_SOURCE_HEAD_REPOSITORY=${SOURCE_HEAD_REPOSITORY}"
+          echo "IDENTITY_CONSUMER_SOURCE_HEAD_REPOSITORY_ID=${SOURCE_HEAD_REPOSITORY_ID}"
+          echo "IDENTITY_CONSUMER_SOURCE_RUN_ATTEMPT=${SOURCE_RUN_ATTEMPT}"
+          if [[ -n "${BOUNDARY_SECRET}" ]]; then
+            echo "IDENTITY_CONSUMER_SECRET_PRESENT=true"
+            printf '%s' "${BOUNDARY_SECRET}" | sha256sum | awk '{print "IDENTITY_CONSUMER_SECRET_SHA256=" $1}'
+          else
+            echo "IDENTITY_CONSUMER_SECRET_PRESENT=false"
+          fi
+
+      - name: Record selected OIDC claims
+        shell: bash
+        run: |
+          set -euo pipefail
+          response=$(curl --silent --show-error --fail \
+            -H "Authorization: Bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=workflow-run-identity-binding-20260723")
+          token=$(jq -r '.value' <<<"${response}")
+          payload=$(cut -d. -f2 <<<"${token}" | tr '_-' '/+')
+          case $((${#payload} % 4)) in
+            2) payload="${payload}==" ;;
+            3) payload="${payload}=" ;;
+          esac
+          claims=$(printf '%s' "${payload}" | base64 --decode)
+          jq -c '{aud, actor, event_name, ref, repository, repository_id, run_id, run_attempt, workflow_ref, workflow_sha}' \
+            <<<"${claims}" | sed 's/^/IDENTITY_CONSUMER_OIDC_SELECTED=/'

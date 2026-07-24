@@ -1,0 +1,19 @@
+name: Trusted Producer Identity 20260723
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit trusted producer marker
+        shell: bash
+        run: |
+          echo "IDENTITY_PRODUCER_KIND=trusted-default-path"
+          echo "IDENTITY_PRODUCER_PATH=.github/workflows/identity-trusted-producer.yml"
+          echo "IDENTITY_PRODUCER_RUN_ID=${GITHUB_RUN_ID}"
+          echo "IDENTITY_PRODUCER_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
