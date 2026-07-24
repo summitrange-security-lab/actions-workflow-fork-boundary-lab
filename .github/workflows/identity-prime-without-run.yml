@@ -1,7 +1,9 @@
-name: Trusted Producer Identity 20260723
+name: Innocent Producer After Dormant Prime 20260723
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -13,5 +15,17 @@ jobs:
       - name: Emit dormant prime marker
         shell: bash
         run: |
-          echo "IDENTITY_PRODUCER_KIND=dormant-prime-without-run"
+          echo "IDENTITY_PRODUCER_KIND=renamed-after-dormant-prime"
           echo "IDENTITY_PRODUCER_PATH=.github/workflows/identity-prime-without-run.yml"
+
+      - name: Create dormant-prime control artifact
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/identity-artifact"
+          printf '%s\n' 'renamed-after-dormant-prime-payload' > "${RUNNER_TEMP}/identity-artifact/source.txt"
+
+      - name: Upload dormant-prime control artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: trusted-build-output-20260723
+          path: ${{ runner.temp }}/identity-artifact/source.txt
