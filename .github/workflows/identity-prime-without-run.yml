@@ -1,0 +1,17 @@
+name: Trusted Producer Identity 20260723
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dormant-prime:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit dormant prime marker
+        shell: bash
+        run: |
+          echo "IDENTITY_PRODUCER_KIND=dormant-prime-without-run"
+          echo "IDENTITY_PRODUCER_PATH=.github/workflows/identity-prime-without-run.yml"
