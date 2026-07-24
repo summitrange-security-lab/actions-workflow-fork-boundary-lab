@@ -1,0 +1,36 @@
+name: Trusted Producer Identity 20260723
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  produce-spoof-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit fork spoof identity marker
+        shell: bash
+        run: |
+          echo "IDENTITY_PRODUCER_KIND=fork-different-path-same-name"
+          echo "IDENTITY_PRODUCER_PATH=.github/workflows/identity-spoof-producer.yml"
+          echo "IDENTITY_PRODUCER_REPOSITORY=${GITHUB_REPOSITORY}"
+          echo "IDENTITY_PRODUCER_EVENT=${GITHUB_EVENT_NAME}"
+          echo "IDENTITY_PRODUCER_REF=${GITHUB_REF}"
+          echo "IDENTITY_PRODUCER_SHA=${GITHUB_SHA}"
+          echo "IDENTITY_PRODUCER_RUN_ID=${GITHUB_RUN_ID}"
+          echo "IDENTITY_PRODUCER_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
+          echo "IDENTITY_PRODUCER_BRANCH_FILTER_PROBE=20260723-v1"
+
+      - name: Create fork-controlled build artifact
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/identity-artifact"
+          printf '%s\n' 'fork-spoof-controlled-payload' > "${RUNNER_TEMP}/identity-artifact/source.txt"
+
+      - name: Upload fork-controlled build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: trusted-build-output-20260723
+          path: ${{ runner.temp }}/identity-artifact/source.txt
