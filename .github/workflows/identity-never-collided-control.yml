@@ -1,9 +1,7 @@
 name: Never Collided Producer Control 20260723
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
