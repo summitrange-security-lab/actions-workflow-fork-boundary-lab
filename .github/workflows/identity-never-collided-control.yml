@@ -1,0 +1,22 @@
+name: Never Collided Producer Control 20260723
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  produce-control-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Emit never-collided control marker
+        shell: bash
+        run: |
+          echo "IDENTITY_PRODUCER_KIND=fork-never-collided-control"
+          echo "IDENTITY_PRODUCER_PATH=.github/workflows/identity-never-collided-control.yml"
+          echo "IDENTITY_PRODUCER_REPOSITORY=${GITHUB_REPOSITORY}"
+          echo "IDENTITY_PRODUCER_EVENT=${GITHUB_EVENT_NAME}"
+          echo "IDENTITY_PRODUCER_RUN_ID=${GITHUB_RUN_ID}"
