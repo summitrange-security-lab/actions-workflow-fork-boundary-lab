@@ -4,14 +4,13 @@ on:
   workflow_run:
     workflows:
       - Trusted Producer Identity 20260723
-    branches:
-      - main
     types:
       - completed
 
 permissions:
   actions: read
   contents: write
+  deployments: write
   id-token: write
 
 jobs:
@@ -65,3 +64,60 @@ jobs:
           claims=$(printf '%s' "${payload}" | base64 --decode)
           jq -c '{aud, actor, event_name, ref, repository, repository_id, run_id, run_attempt, workflow_ref, workflow_sha}' \
             <<<"${claims}" | sed 's/^/IDENTITY_CONSUMER_OIDC_SELECTED=/'
+
+      - name: Download selected producer artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: trusted-build-output-20260723
+          path: ${{ runner.temp }}/identity-artifact-download
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create protected-repository deployment canary
+        shell: bash
+        env:
+          GH_JOB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          artifact_file="${RUNNER_TEMP}/identity-artifact-download/source.txt"
+          artifact_kind=$(tr -d '\r\n' < "${artifact_file}")
+          artifact_sha256=$(sha256sum "${artifact_file}" | awk '{print $1}')
+          echo "IDENTITY_CONSUMER_ARTIFACT_KIND=${artifact_kind}"
+          echo "IDENTITY_CONSUMER_ARTIFACT_SHA256=${artifact_sha256}"
+
+          payload=$(jq -n \
+            --arg ref "${GITHUB_SHA}" \
+            --arg source_run_id "${SOURCE_RUN_ID}" \
+            --arg source_workflow_id "${SOURCE_WORKFLOW_ID}" \
+            --arg source_path "${SOURCE_PATH}" \
+            --arg artifact_kind "${artifact_kind}" \
+            --arg artifact_sha256 "${artifact_sha256}" \
+            '{
+              ref: $ref,
+              environment: "workflow-run-identity-canary",
+              description: "Owner-authorized workflow identity binding canary",
+              auto_merge: false,
+              required_contexts: [],
+              transient_environment: true,
+              production_environment: false,
+              payload: {
+                source_run_id: $source_run_id,
+                source_workflow_id: $source_workflow_id,
+                source_path: $source_path,
+                artifact_kind: $artifact_kind,
+                artifact_sha256: $artifact_sha256
+              }
+            }')
+          status=$(curl --silent --show-error \
+            --output "${RUNNER_TEMP}/deployment-response.json" \
+            --write-out '%{http_code}' \
+            --request POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_JOB_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            --data "${payload}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/deployments")
+          echo "IDENTITY_CONSUMER_DEPLOYMENT_STATUS=${status}"
+          jq -r '"IDENTITY_CONSUMER_DEPLOYMENT_ID=" + ((.id // 0) | tostring), "IDENTITY_CONSUMER_DEPLOYMENT_MESSAGE=" + (.message // "none")' \
+            "${RUNNER_TEMP}/deployment-response.json"
+          [[ "${status}" == "201" ]]

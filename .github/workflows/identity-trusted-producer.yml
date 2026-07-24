@@ -17,3 +17,15 @@ jobs:
           echo "IDENTITY_PRODUCER_PATH=.github/workflows/identity-trusted-producer.yml"
           echo "IDENTITY_PRODUCER_RUN_ID=${GITHUB_RUN_ID}"
           echo "IDENTITY_PRODUCER_ATTEMPT=${GITHUB_RUN_ATTEMPT}"
+
+      - name: Create trusted build artifact
+        shell: bash
+        run: |
+          mkdir -p "${RUNNER_TEMP}/identity-artifact"
+          printf '%s\n' 'trusted-default-path-payload' > "${RUNNER_TEMP}/identity-artifact/source.txt"
+
+      - name: Upload trusted build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: trusted-build-output-20260723
+          path: ${{ runner.temp }}/identity-artifact/source.txt
